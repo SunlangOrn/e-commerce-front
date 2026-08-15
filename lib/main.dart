@@ -54,7 +54,6 @@ class AuthGate extends StatelessWidget {
           body: Center(child: CircularProgressIndicator()),
         );
       case AuthStatus.authenticated:
-      // Returns the MainNavigationScreen with the bottom navbar
         return const MainNavigationScreen();
       case AuthStatus.unauthenticated:
         return const LoginScreen();

@@ -6,7 +6,7 @@ class ApiConstants {
 
   static const String _emulatorHost = "10.0.2.2"; // Needed for your simulator
   static const String _webHost = "localhost";
-  static const String _physicalDeviceHost = "192.168.1.3";
+  static const String _realDevice = "192.168.1.3";
 
   static const int _port = 16800;
 
@@ -18,7 +18,7 @@ class ApiConstants {
     } else if (Platform.isIOS) {
       return "localhost";
     }
-    return _physicalDeviceHost;
+    return _realDevice;
   }
 
   static String get rootUrl => "http://$_host:$_port";

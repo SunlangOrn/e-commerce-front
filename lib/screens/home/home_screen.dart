@@ -21,18 +21,19 @@ class _HomeScreenState extends State<HomeScreen> {
   late final PageController _bannerController;
   Timer? _bannerTimer;
   int _currentBannerIndex = 0;
+  final int _bannerCount = 2; // Total promotional banners
 
   @override
   void initState() {
     super.initState();
-    _bannerController = PageController(viewportFraction: 0.88);
+    _bannerController = PageController(viewportFraction: 0.9);
 
     // Auto-scroll banner timer (changes every 3 seconds)
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_bannerController.hasClients) {
-        _currentBannerIndex = (_currentBannerIndex + 1) % 2; // Assuming 2 banners
+        final nextIndex = (_currentBannerIndex + 1) % _bannerCount;
         _bannerController.animateToPage(
-          _currentBannerIndex,
+          nextIndex,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeInOut,
         );
@@ -76,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // --- Header & Auto-Moving Banners ---
+              // --- Header & Banner Slider ---
               SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,27 +133,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Auto-Scrolling Promotional Banners
-                    SizedBox(
-                      height: 160,
-                      child: PageView(
-                        padEnds: false,
-                        controller: _bannerController,
-                        children: [
-                          _buildPromoBanner(
-                            brand: "Murad",
-                            title: "Retinol Youth Renewal\nNight Cream",
-                            buttonText: "20% OFF | BUY NOW",
-                            color: const Color(0xFF8CE63B),
+                    // Auto-Scrolling Banners + Dots
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: 160,
+                          child: PageView(
+                            controller: _bannerController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentBannerIndex = index;
+                              });
+                            },
+                            children: [
+                              _buildPromoBanner(
+                                brand: "Murad",
+                                title: "Retinol Youth Renewal\nNight Cream",
+                                buttonText: "20% OFF | BUY NOW",
+                                color: const Color(0xFF8CE63B),
+                              ),
+                              _buildPromoBanner(
+                                brand: "The Ordinary",
+                                title: "Glycolic Acid 7%\nToning Solution",
+                                buttonText: "BUY NOW",
+                                color: const Color(0xFFE2DDD5),
+                              ),
+                            ],
                           ),
-                          _buildPromoBanner(
-                            brand: "The Ordinary",
-                            title: "Glycolic Acid 7%\nToning Solution",
-                            buttonText: "BUY NOW",
-                            color: const Color(0xFFE2DDD5),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // --- Animated Dot Page Indicator ---
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(_bannerCount, (index) {
+                            final isSelected = _currentBannerIndex == index;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              margin:
+                              const EdgeInsets.symmetric(horizontal: 3),
+                              height: 6,
+                              width: isSelected ? 18 : 6,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.black
+                                    : Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 20),
@@ -181,7 +212,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: const Text(
                               "See all",
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style:
+                              TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ),
                         ],
@@ -198,12 +230,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: categoryProvider.categories.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, __) =>
+                          const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final cat = categoryProvider.categories[index];
                             final isSelected = _selectedCategory == cat.name;
 
                             return ChoiceChip(
+                              showCheckmark: false,
                               label: Text(cat.name),
                               selected: isSelected,
                               onSelected: (_) {
@@ -249,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // --- 2-Column Product Grid (Scrolls down natively) ---
+              // --- 2-Column Product Grid ---
               productProvider.isLoading
                   ? const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
@@ -268,8 +302,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 sliver: SliverGrid(
                   gridDelegate:
                   const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, // 2 items per line
-                    childAspectRatio: 0.65, // Adjust card proportion height/width
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.58,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -315,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
   }) {
     return Container(
-      margin: const EdgeInsets.only(left: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 6),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: color,

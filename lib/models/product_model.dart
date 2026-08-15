@@ -21,17 +21,28 @@ class ProductModel {
     this.imageUrl,
   });
 
-  /// Full, loadable image URL (host + relative path from backend).
+  /// Resolves image path against backend API base URL
   String get resolvedImageUrl => ApiConstants.resolveImageUrl(imageUrl);
 
   factory ProductModel.fromJson(Map<String, dynamic> json) => ProductModel(
-    id: json["id"],
-    categoryId: json["categoryId"],
-    categoryName: json["categoryName"],
-    name: json["name"] ?? "",
-    description: json["description"],
+    id: (json["id"] as num?)?.toInt() ?? 0,
+    categoryId: (json["categoryId"] as num?)?.toInt(),
+    categoryName: json["categoryName"] as String?,
+    name: json["name"] as String? ?? "",
+    description: json["description"] as String?,
     price: (json["price"] as num?)?.toDouble() ?? 0.0,
-    stockQuantity: json["stockQuantity"] ?? 0,
-    imageUrl: json["imageUrl"],
+    stockQuantity: (json["stockQuantity"] as num?)?.toInt() ?? 0,
+    imageUrl: json["imageUrl"] as String?,
   );
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "categoryId": categoryId,
+    "categoryName": categoryName,
+    "name": name,
+    "description": description,
+    "price": price,
+    "stockQuantity": stockQuantity,
+    "imageUrl": imageUrl,
+  };
 }

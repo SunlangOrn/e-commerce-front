@@ -20,26 +20,29 @@ class ProductService {
   final _dio = ApiClient.instance.dio;
 
   Future<ProductPage> browse({
-    int? page,
-    int? size,
+    int page = 0,
+    int size = 20,
     int? categoryId,
     String? keyword,
   }) async {
-    final res = await _dio.get(ApiConstants.products, queryParameters: {
-      if (page != null) "page": page,
-      if (size != null) "size": size,
-      if (categoryId != null) "categoryId": categoryId,
-      if (keyword != null && keyword.isNotEmpty) "keyword": keyword,
-    });
+    final res = await _dio.get(
+      ApiConstants.products,
+      queryParameters: {
+        'page': page,
+        'size': size,
+        if (categoryId != null) 'categoryId': categoryId,
+        if (keyword != null && keyword.trim().isNotEmpty) 'keyword': keyword.trim(),
+      },
+    );
 
-    final list = res.data["data"] as List<dynamic>;
+    final list = (res.data["data"] as List<dynamic>?) ?? [];
     final paging = res.data["paging"];
 
     return ProductPage(
       products: list.map((e) => ProductModel.fromJson(e)).toList(),
       page: paging?["page"] ?? 0,
       totalPages: paging?["totalPages"] ?? 1,
-      totalElements: paging?["total"] ?? list.length,
+      totalElements: paging?["total"] ?? list.length, // Matches "total" in JSON
     );
   }
 

@@ -5,7 +5,7 @@ import '../../providers/cart_provider.dart';
 import '../cart/cart_screen.dart';
 import '../home/home_screen.dart';
 import '../product/all_products_screen.dart';
-import '../profile/profile_screen.dart'; // Make sure ProfileScreen is imported here
+import '../profile/profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -19,9 +19,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const AllProductsScreen(), // Tab 1: All Products
-    const CartScreen(),        // Tab 2: Cart
-    const ProfileScreen(),     // Tab 3: Profile (Replaced Address)
+    const AllProductsScreen(),
+    const CartScreen(),
+    const ProfileScreen(),
   ];
 
   @override

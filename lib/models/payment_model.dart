@@ -4,7 +4,7 @@ class AbaPayWayResponseModel {
   final double amount;
   final String currency;
   final String? qrString;
-  final String? qrImage; // may be raw base64 OR a data:image/png;base64,... URI
+  final String? qrImage;
   final String? abaPayDeeplink;
   final String? statusCode;
   final String? statusMessage;
@@ -23,8 +23,7 @@ class AbaPayWayResponseModel {
     this.expiresAt,
   });
 
-  /// Strips a "data:image/png;base64," prefix if present, so
-  /// base64Decode always gets clean base64.
+  /// Strips data URI prefixes if present to return clean base64 string
   String? get qrImageRaw {
     if (qrImage == null || qrImage!.isEmpty) return null;
     final commaIndex = qrImage!.indexOf(',');
@@ -36,7 +35,7 @@ class AbaPayWayResponseModel {
 
   factory AbaPayWayResponseModel.fromJson(Map<String, dynamic> json) =>
       AbaPayWayResponseModel(
-        orderId: json["orderId"],
+        orderId: json["orderId"] ?? 0,
         tranId: json["tranId"],
         amount: (json["amount"] as num?)?.toDouble() ?? 0.0,
         currency: json["currency"] ?? "KHR",

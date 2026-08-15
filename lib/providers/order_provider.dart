@@ -51,7 +51,6 @@ class OrderProvider extends ChangeNotifier {
     try {
       errorMessage = null;
       currentQr = await _paymentService.createAbaKhqr(orderId);
-      // Refresh the order so PaymentQrScreen has amount/orderNumber to show.
       currentOrder = await _orderService.getById(orderId);
       notifyListeners();
       return true;
@@ -76,7 +75,10 @@ class OrderProvider extends ChangeNotifier {
 
   Future<OrderModel?> fetchOrderDetail(int id) async {
     try {
-      return await _orderService.getById(id);
+      final order = await _orderService.getById(id);
+      currentOrder = order;      // ADDED — keep provider state in sync
+      notifyListeners();         // ADDED — so watchers rebuild
+      return order;
     } catch (_) {
       errorMessage = "Failed to load order";
       notifyListeners();
@@ -98,14 +100,12 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  /// Polls the ABA KHQR status endpoint every 3s for up to ~[timeoutSeconds].
-  /// Calls [onPaid] once the transaction succeeds, [onExpired] on timeout.
   void startPolling(
       int orderId, {
         required VoidCallback onPaid,
         required VoidCallback onExpired,
         int intervalSeconds = 3,
-        int timeoutSeconds = 900, // matches ABA_PAYWAY_LIFETIME_MINUTES default (15m)
+        int timeoutSeconds = 900,
       }) {
     stopPolling();
     isPolling = true;
@@ -115,7 +115,25 @@ class OrderProvider extends ChangeNotifier {
       elapsed += intervalSeconds;
       try {
         final status = await _paymentService.checkAbaKhqr(orderId);
-        currentQr = status;
+
+        // Preserve base64 image data when updating status response
+        if (currentQr != null) {
+          currentQr = AbaPayWayResponseModel(
+            orderId: status.orderId,
+            tranId: status.tranId ?? currentQr?.tranId,
+            amount: status.amount > 0 ? status.amount : (currentQr?.amount ?? 0.0),
+            currency: status.currency,
+            qrString: status.qrString ?? currentQr?.qrString,
+            qrImage: status.qrImage ?? currentQr?.qrImage,
+            abaPayDeeplink: status.abaPayDeeplink ?? currentQr?.abaPayDeeplink,
+            statusCode: status.statusCode,
+            statusMessage: status.statusMessage,
+            expiresAt: status.expiresAt ?? currentQr?.expiresAt,
+          );
+        } else {
+          currentQr = status;
+        }
+
         notifyListeners();
 
         if (status.isSuccess) {

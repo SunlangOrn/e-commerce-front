@@ -1,13 +1,16 @@
-import 'dart:convert';
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
-class KhqrCard extends StatelessWidget {
+class KhqrCard extends StatefulWidget {
   final String merchantName;
   final double subtotal;
   final double total;
   final String currency;
-  final String? qrImageBase64;
+  final Uint8List? qrBytes;
   final VoidCallback? onDownloadQr;
+  final VoidCallback? onRefreshQr;
+  final int durationInSeconds;
 
   const KhqrCard({
     super.key,
@@ -15,24 +18,84 @@ class KhqrCard extends StatelessWidget {
     required this.subtotal,
     required this.total,
     this.currency = "KHR",
-    required this.qrImageBase64,
+    this.qrBytes,
     this.onDownloadQr,
+    this.onRefreshQr,
+    this.durationInSeconds = 300,
   });
+
+  @override
+  State<KhqrCard> createState() => _KhqrCardState();
+}
+
+class _KhqrCardState extends State<KhqrCard> {
+  Timer? _timer;
+  late int _remainingSeconds;
+  bool _isExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant KhqrCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.qrBytes != oldWidget.qrBytes && widget.qrBytes != null) {
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _remainingSeconds = widget.durationInSeconds;
+    _isExpired = false;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        if (mounted) {
+          setState(() {
+            _remainingSeconds--;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isExpired = true;
+          });
+        }
+        _timer?.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatTimer(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return "$mins:$secs";
+  }
 
   String _formatCurrency(double amount) {
     final whole = amount.round();
     final grouped = whole
         .toString()
         .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => "${m[1]},");
-    return "$grouped $currency";
+    return "$grouped ${widget.currency}";
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasQr = widget.qrBytes != null && widget.qrBytes!.isNotEmpty;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // --- ABA Pre-Rendered KHQR Card Container ---
         Container(
           width: double.infinity,
           constraints: const BoxConstraints(maxWidth: 320),
@@ -51,51 +114,93 @@ class KhqrCard extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // Display ABA's Base64 image directly without adding competing borders
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: qrImageBase64 != null && qrImageBase64!.isNotEmpty
-                      ? Image.memory(
-                    base64Decode(qrImageBase64!),
-                    width: 280,
-                    fit: BoxFit.contain,
-                  )
-                      : const SizedBox(
-                    height: 320,
-                    width: 280,
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (hasQr)
+                        ColorFiltered(
+                          colorFilter: _isExpired
+                              ? const ColorFilter.mode(
+                            Colors.grey,
+                            BlendMode.saturation,
+                          )
+                              : const ColorFilter.mode(
+                            Colors.transparent,
+                            BlendMode.multiply,
+                          ),
+                          child: Opacity(
+                            opacity: _isExpired ? 0.2 : 1.0,
+                            child: Image.memory(
+                              widget.qrBytes!,
+                              width: 280,
+                              fit: BoxFit.contain,
+                              gaplessPlayback: true,
+                            ),
+                          ),
+                        )
+                      else
+                        const SizedBox(
+                          height: 280,
+                          width: 280,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
+                        ),
+                      if (_isExpired)
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.timer_off_outlined, size: 48, color: Colors.redAccent),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "QR Code Expired",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: widget.onRefreshQr,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text("Regenerate QR"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
                 Divider(color: Colors.grey.shade200, height: 1),
                 const SizedBox(height: 12),
-
-                // Subtotal & Total Breakdown below the official QR
-                _AmountRow(label: "Subtotal", value: _formatCurrency(subtotal)),
+                _AmountRow(label: "Subtotal", value: _formatCurrency(widget.subtotal)),
                 const SizedBox(height: 6),
                 _AmountRow(
                   label: "Total Amount",
-                  value: _formatCurrency(total),
+                  value: _formatCurrency(widget.total),
                   bold: true,
                 ),
               ],
             ),
           ),
         ),
-
         const SizedBox(height: 20),
-
-        // --- Action Area: Download & Live Status Indicator ---
         SizedBox(
           width: 320,
           child: Column(
             children: [
-              // Download Button
               OutlinedButton.icon(
-                onPressed: onDownloadQr,
+                onPressed: _isExpired ? null : widget.onDownloadQr,
                 icon: const Icon(Icons.file_download_outlined, size: 20),
                 label: const Text("Download QR Code"),
                 style: OutlinedButton.styleFrom(
@@ -103,39 +208,52 @@ class KhqrCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  side: const BorderSide(color: Color(0xFF0284C7)),
+                  side: BorderSide(
+                    color: _isExpired ? Colors.grey.shade300 : const Color(0xFF0284C7),
+                  ),
                   foregroundColor: const Color(0xFF0284C7),
                 ),
               ),
               const SizedBox(height: 12),
-
-              // Animated "Waiting for payment..." Status Pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: _isExpired ? Colors.red.shade50 : Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.blue.shade700,
+                    if (!_isExpired) ...[
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.blue.shade700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Waiting for payment...",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.blue.shade800,
+                      const SizedBox(width: 8),
+                      Text(
+                        "Waiting for payment (${_formatTimer(_remainingSeconds)})",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue.shade800,
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Session expired",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red.shade800,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

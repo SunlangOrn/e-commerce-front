@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/order_model.dart';
 import '../../widgets/primary_button.dart';
-import '../home/home_screen.dart';
+import '../home/main_navigation_screen.dart';
 
 class OrderResultScreen extends StatelessWidget {
   final OrderModel order;
@@ -9,7 +9,11 @@ class OrderResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Correctly checks payment status and order status variations
     final isPaid = order.paymentStatus == "SUCCESS" ||
+        order.paymentStatus == "PAID" ||
+        order.status == "COMPLETED" ||
+        order.status == "PROCESSING" ||
         order.paymentMethod == "CASH_ON_DELIVERY";
 
     return Scaffold(
@@ -34,22 +38,26 @@ class OrderResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                isPaid ? "Success" : "Order pending",
+                isPaid ? "Payment Successful" : "Order Pending",
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
               Text(
-                "Order confirmation details sent to your email",
+                isPaid
+                    ? "Thank you! Order confirmation details were sent to your email."
+                    : "We are processing your order confirmation.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey.shade600),
               ),
-              const SizedBox(height: 4),
-              Text("Order #${order.orderNumber}",
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+              const SizedBox(height: 6),
+              Text(
+                "Order #${order.orderNumber}",
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+              ),
               const SizedBox(height: 40),
               OutlinedButton(
                 onPressed: () {
-                  // Hook up to a real receipt export/download if you add one.
+                  // Export or download receipt feature
                 },
                 child: const Text("Download Receipt"),
               ),
@@ -57,7 +65,7 @@ class OrderResultScreen extends StatelessWidget {
               PrimaryButton(
                 label: "Continue Shopping",
                 onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
                       (route) => false,
                 ),
               ),
