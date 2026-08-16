@@ -18,16 +18,21 @@ class PickedLocation {
 
 class AddressMapPickerScreen extends StatefulWidget {
   final LatLng? initialLatLng;
+  final LatLng defaultCenter;
+  final String defaultCity;
 
-  const AddressMapPickerScreen({super.key, this.initialLatLng});
+  const AddressMapPickerScreen({
+    super.key,
+    this.initialLatLng,
+    this.defaultCenter = const LatLng(0, 0),
+    this.defaultCity = "Unknown City",
+  });
 
   @override
   State<AddressMapPickerScreen> createState() => _AddressMapPickerScreenState();
 }
 
 class _AddressMapPickerScreenState extends State<AddressMapPickerScreen> {
-  static const _defaultCenter = LatLng(11.5564, 104.9282); // Phnom Penh fallback
-
   final MapController _mapController = MapController();
   late LatLng _pickedLatLng;
   String _resolvedAddress = "";
@@ -37,7 +42,7 @@ class _AddressMapPickerScreenState extends State<AddressMapPickerScreen> {
   @override
   void initState() {
     super.initState();
-    _pickedLatLng = widget.initialLatLng ?? _defaultCenter;
+    _pickedLatLng = widget.initialLatLng ?? widget.defaultCenter;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialLatLng != null) {
         _reverseGeocode(_pickedLatLng);
@@ -90,7 +95,7 @@ class _AddressMapPickerScreenState extends State<AddressMapPickerScreen> {
       );
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        final line = [p.street, p.subLocality]
+        final line = [p.street, p.subLocality, p.locality]
             .where((s) => s != null && s.isNotEmpty)
             .join(", ");
         setState(() {
@@ -111,12 +116,19 @@ class _AddressMapPickerScreenState extends State<AddressMapPickerScreen> {
         latLng.longitude,
       );
       if (placemarks.isNotEmpty) {
-        return placemarks.first.locality?.isNotEmpty == true
-            ? placemarks.first.locality!
-            : (placemarks.first.administrativeArea ?? "Phnom Penh");
+        final p = placemarks.first;
+        if (p.locality != null && p.locality!.isNotEmpty) {
+          return p.locality!;
+        }
+        if (p.subAdministrativeArea != null && p.subAdministrativeArea!.isNotEmpty) {
+          return p.subAdministrativeArea!;
+        }
+        if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) {
+          return p.administrativeArea!;
+        }
       }
     } catch (_) {}
-    return "Phnom Penh";
+    return widget.defaultCity;
   }
 
   @override
